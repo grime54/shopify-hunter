@@ -228,6 +228,98 @@ body {
   padding: 2rem;
 }
 
+/* ===== API KEY SECTION ===== */
+.api-section {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0 0;
+}
+
+.api-card {
+  width: 100%;
+  max-width: 720px;
+  padding: 1.2rem 1.5rem;
+}
+
+.api-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.api-header span:first-child { font-size: 1.3rem; }
+
+.api-status {
+  margin-left: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.api-input-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.api-input {
+  flex: 1;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.3s;
+}
+
+.api-input:focus { border-color: var(--accent); }
+
+.api-input.shake {
+  animation: shake 0.4s ease;
+  border-color: var(--danger) !important;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  60% { transform: translateX(-5px); }
+  80% { transform: translateX(5px); }
+}
+
+.api-save-btn {
+  padding: 0.6rem 1.2rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  font-family: inherit;
+  background: linear-gradient(135deg, var(--accent), #5a4bd1);
+  color: white;
+  border: none;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.api-save-btn:hover { opacity: 0.9; transform: scale(1.02); }
+
+.api-hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.api-hint a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.api-hint a:hover { text-decoration: underline; }
+
 /* ===== SEARCH SECTION ===== */
 .search-section {
   display: flex;

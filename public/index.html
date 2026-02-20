@@ -7,16 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎯</text></svg>">
 </head>
 <body>
-  <!-- Animated background -->
   <div class="bg-grid"></div>
   <div class="bg-glow glow-1"></div>
   <div class="bg-glow glow-2"></div>
   <div class="bg-glow glow-3"></div>
 
-  <!-- Header -->
   <header class="header">
     <div class="header-inner">
       <div class="logo">
@@ -35,25 +33,33 @@
     </div>
   </header>
 
-  <!-- Main content -->
   <main class="main">
+    <!-- API Key Section -->
+    <section class="api-section" id="apiSection">
+      <div class="api-card glass">
+        <div class="api-header">
+          <span>🔑</span>
+          <div>
+            <strong>Serper API Key</strong>
+            <span class="api-status" id="apiStatus">Girilmedi</span>
+          </div>
+        </div>
+        <div class="api-input-row">
+          <input type="password" id="apiKeyInput" placeholder="Serper.dev API key yapıştır..." class="api-input">
+          <button id="saveKeyBtn" class="api-save-btn">Kaydet</button>
+        </div>
+        <p class="api-hint">Ücretsiz key al → <a href="https://serper.dev" target="_blank">serper.dev</a> (2500 sorgu/ay, kredi kartı gerekmez)</p>
+      </div>
+    </section>
+
     <!-- Search Section -->
     <section class="search-section" id="searchSection">
       <div class="search-card glass">
         <h2 class="search-title">Hangi ürünü arıyorsun?</h2>
         <p class="search-subtitle">Bir kelime yaz, gerçek Shopify mağazalarını bulalım</p>
-        
         <form class="search-form" id="searchForm">
           <div class="input-wrapper">
-            <div class="input-glow"></div>
-            <input 
-              type="text" 
-              id="searchInput" 
-              placeholder="örn: esim, coffee, sneakers, candle..." 
-              autocomplete="off"
-              maxlength="100"
-              required
-            >
+            <input type="text" id="searchInput" placeholder="örn: esim, coffee, sneakers, candle..." autocomplete="off" maxlength="100" required>
             <button type="submit" class="search-btn" id="searchBtn">
               <span class="btn-text">Avla</span>
               <span class="btn-icon">🔍</span>
@@ -61,7 +67,6 @@
             </button>
           </div>
         </form>
-
         <div class="search-tags">
           <span class="tag-label">Popüler:</span>
           <button class="tag" data-keyword="esim">eSIM</button>
@@ -119,27 +124,19 @@
           <div class="summary-icon">🏆</div>
           <div class="summary-info">
             <h2>Sonuçlar</h2>
-            <p id="resultsSummary">0 doğrulanmış Shopify mağazası bulundu</p>
+            <p id="resultsSummary">0 doğrulanmış Shopify mağazası</p>
           </div>
           <div class="summary-actions">
-            <button class="action-btn" id="exportCsvBtn" title="CSV İndir">
-              📊 CSV
-            </button>
-            <button class="action-btn" id="exportJsonBtn" title="JSON İndir">
-              📋 JSON
-            </button>
-            <button class="action-btn" id="newSearchBtn" title="Yeni Arama">
-              🔄 Yeni Arama
-            </button>
+            <button class="action-btn" id="exportCsvBtn">📊 CSV</button>
+            <button class="action-btn" id="exportJsonBtn">📋 JSON</button>
+            <button class="action-btn" id="newSearchBtn">🔄 Yeni Arama</button>
           </div>
         </div>
       </div>
-
       <div class="results-grid" id="resultsGrid"></div>
     </section>
   </main>
 
-  <!-- Footer -->
   <footer class="footer">
     <p>Shopify Hunter X-3000 — Premium Store Discovery Engine</p>
   </footer>

@@ -3,64 +3,64 @@ const router = express.Router();
 const { searchAllDorks } = require('../src/braveSearch');
 const { verifyAll } = require('../src/verifier');
 
-// SSE endpoint for real-time search progress
+// SSE search endpoint
 router.get('/search', async (req, res) => {
   const keyword = (req.query.q || '').trim();
+  const apiKey = req.query.key || process.env.SERPER_API_KEY || '';
+
   if (!keyword || keyword.length > 100) {
     return res.status(400).json({ error: 'Invalid keyword' });
   }
 
-  // Set up SSE
+  if (!apiKey) {
+    return res.status(400).json({ error: 'API key required. Enter your Serper.dev API key.' });
+  }
+
+  // SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
   const send = (event, data) => {
-    res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {}
   };
 
   try {
-    send('status', { message: `🔍 Generating search dorks for "${keyword}"...`, phase: 'init' });
+    send('status', { message: `🔍 "${keyword}" için arama başlıyor...`, phase: 'init' });
+    send('status', { message: '🌐 Google üzerinden aranıyor...', phase: 'searching' });
 
     // Phase 1: Search
-    send('status', { message: '🌐 Searching across multiple engines...', phase: 'searching' });
-    
-    const candidates = await searchAllDorks(keyword, (progress) => {
-      send('progress', progress);
-    });
+    const candidates = await searchAllDorks(keyword, apiKey, (p) => send('progress', p));
 
-    send('status', { 
-      message: `📋 Found ${candidates.length} candidates. Starting verification...`, 
+    send('status', {
+      message: `📋 ${candidates.length} aday bulundu. Doğrulama başlıyor...`,
       phase: 'verifying',
-      candidateCount: candidates.length 
+      candidateCount: candidates.length,
     });
 
     if (candidates.length === 0) {
-      send('complete', { stores: [], message: 'No candidates found. Try a different keyword.' });
+      send('complete', { stores: [], stats: { keyword, totalCandidates: 0, verified: 0 } });
       return res.end();
     }
 
     // Phase 2: Verify
-    const verified = await verifyAll(candidates, keyword, 5, (progress) => {
-      send('progress', progress);
+    const verified = await verifyAll(candidates, keyword, 6, (p) => send('progress', p));
+
+    send('status', {
+      message: `✅ Tamamlandı! ${verified.length} onaylı Shopify mağazası bulundu.`,
+      phase: 'done',
     });
 
-    send('status', { 
-      message: `✅ Verification complete! ${verified.length} confirmed Shopify stores.`, 
-      phase: 'done' 
-    });
-
-    send('complete', { 
+    send('complete', {
       stores: verified,
       stats: {
         keyword,
         totalCandidates: candidates.length,
         verified: verified.length,
         timestamp: new Date().toISOString(),
-      }
+      },
     });
-
   } catch (err) {
     send('error', { message: err.message });
   } finally {
@@ -68,9 +68,13 @@ router.get('/search', async (req, res) => {
   }
 });
 
-// Quick health check
+// Config check
 router.get('/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: Date.now() });
+  res.json({
+    status: 'ok',
+    hasApiKey: !!process.env.SERPER_API_KEY,
+    timestamp: Date.now(),
+  });
 });
 
 module.exports = router;
