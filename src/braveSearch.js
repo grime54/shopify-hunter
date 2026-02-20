@@ -12,17 +12,124 @@ const BLACKLIST = new Set([
   'github.com','stackoverflow.com','wordpress.com','aliexpress.com',
   'etsy.com','walmart.com','target.com','bestbuy.com','play.google.com',
   'apps.apple.com','web.archive.org','yelp.com','make.com','zapier.com',
-  'fiverr.com','upwork.com',
+  'producthunt.com','techcrunch.com','forbes.com','businessinsider.com',
+  'nytimes.com','bbc.com','cnn.com',
 ]);
 
-function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+/**
+ * STEP 1: Discover related keywords via Serper autocomplete + related searches
+ */
+async function discoverRelatedTerms(keyword, apiKey) {
+  const related = new Set();
+  related.add(keyword);
+
+  try {
+    // Serper autocomplete
+    const autoResp = await axios.post('https://google.serper.dev/autocomplete', 
+      { q: keyword }, {
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+      timeout: 8000,
+    });
+    for (const s of (autoResp.data?.suggestions || [])) {
+      const val = (s.value || s).toLowerCase();
+      if (val.includes('shopif') || val.includes('buy') || val.includes('shop') || 
+          val.includes('store') || val.includes('card') || val.includes('gift') ||
+          val.includes('code') || val.includes('cheap') || val.includes('online')) {
+        related.add(val);
+      }
+    }
+  } catch {}
+
+  try {
+    // Get related searches from a basic query
+    const resp = await axios.post(SERPER_URL, { q: `${keyword} buy online`, num: 10 }, {
+      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
+      timeout: 10000,
+    });
+    for (const r of (resp.data?.relatedSearches || [])) {
+      const q = (r.query || '').toLowerCase();
+      if (q && q.length < 60) related.add(q);
+    }
+  } catch {}
+
+  // Auto-generate common variations
+  const kw = keyword.toLowerCase();
+  const autoVariations = [
+    `${kw} gift card`,
+    `${kw} code`,
+    `${kw} card`,
+    `buy ${kw}`,
+    `cheap ${kw}`,
+    `${kw} online`,
+    `${kw} digital`,
+    `${kw} instant`,
+    `${kw} top up`,
+  ];
+  for (const v of autoVariations) related.add(v);
+
+  // e-prefix
+  if (!kw.startsWith('e-')) related.add(`e-${kw}`);
+  // plural
+  if (!kw.endsWith('s')) related.add(`${kw}s`);
+
+  return [...related].slice(0, 15); // Max 15 variations
+}
 
 /**
- * Single Serper search — returns up to 10 results on free plan
+ * STEP 2: Generate dorks for ALL keyword variations
+ */
+function generateDorks(keywords) {
+  const dorks = [];
+  const templates = [
+    (kw) => `${kw} powered by shopify`,
+    (kw) => `buy ${kw} powered by shopify`,
+    (kw) => `best ${kw} powered by shopify`,
+    (kw) => `${kw} shop powered by shopify`,
+    (kw) => `${kw} store powered by shopify`,
+    (kw) => `${kw} shopify store`,
+    (kw) => `${kw} shopify online store`,
+    (kw) => `${kw} cdn.shopify.com`,
+    (kw) => `${kw} myshopify.com`,
+    (kw) => `${kw} checkout shopify`,
+    (kw) => `${kw} free shipping powered by shopify`,
+    (kw) => `${kw} sale powered by shopify`,
+    (kw) => `${kw} add to cart powered by shopify`,
+    (kw) => `cheap ${kw} powered by shopify`,
+    (kw) => `${kw} discount powered by shopify`,
+    (kw) => `${kw} /products/ shopify`,
+    (kw) => `${kw} /collections/ shopify`,
+    (kw) => `${kw} official store shopify`,
+  ];
+
+  // Primary keyword gets ALL templates
+  const primary = keywords[0];
+  for (const t of templates) {
+    dorks.push(t(primary));
+  }
+
+  // Regional variants for primary
+  const regions = ['USA', 'UK', 'Europe', 'global', 'Canada', 'Australia', 'international'];
+  for (const r of regions) {
+    dorks.push(`${primary} powered by shopify ${r}`);
+  }
+
+  // Secondary keywords get top 6 templates
+  const topTemplates = templates.slice(0, 6);
+  for (const kw of keywords.slice(1)) {
+    for (const t of topTemplates) {
+      dorks.push(t(kw));
+    }
+  }
+
+  return [...new Set(dorks)];
+}
+
+/**
+ * Search via Serper.dev
  */
 async function searchSerper(query, apiKey, gl = 'us') {
   try {
-    const resp = await axios.post(SERPER_URL, { q: query, gl, num: 10 }, {
+    const resp = await axios.post(SERPER_URL, { q: query, num: 100, gl }, {
       headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
       timeout: 15000,
     });
@@ -30,169 +137,78 @@ async function searchSerper(query, apiKey, gl = 'us') {
       title: r.title || '', url: r.link || '', description: r.snippet || '',
     }));
   } catch (err) {
-    console.error(`Serper [${err.response?.status}]: ${query.slice(0, 60)}`);
+    // Silent on 400s (expected for some queries)
+    if (err.response?.status !== 400) {
+      console.error(`Serper [${err.response?.status || err.message}]: "${query.slice(0, 50)}"`);
+    }
     return [];
   }
 }
 
+/**
+ * Main search pipeline
+ */
+async function searchAllDorks(keyword, apiKey, onProgress) {
+  const allResults = new Map();
+  let completed = 0;
+
+  // PHASE 0: Discover related terms
+  if (onProgress) onProgress({ phase: 'searching', completed: 0, total: 100, found: 0, msg: '🧠 İlgili terimler keşfediliyor...' });
+  const keywords = await discoverRelatedTerms(keyword, apiKey);
+  console.log(`Keywords discovered: ${keywords.join(', ')}`);
+
+  // PHASE 1: Generate and run dorks
+  const dorks = generateDorks(keywords);
+  console.log(`Generated ${dorks.length} dorks`);
+
+  // Multi-region for top 5 dorks
+  const multiRegionDorks = dorks.slice(0, 5);
+  const extraRegions = ['gb', 'de', 'tr', 'au', 'ca', 'fr', 'nl', 'in'];
+  const regionQueries = [];
+  for (const d of multiRegionDorks) {
+    for (const gl of extraRegions) {
+      regionQueries.push({ q: d, gl });
+    }
+  }
+
+  const totalAll = dorks.length + regionQueries.length;
+  const batchSize = 3;
+
+  // Run main dorks
+  for (let i = 0; i < dorks.length; i += batchSize) {
+    const batch = dorks.slice(i, i + batchSize);
+    const results = await Promise.all(batch.map(d => searchSerper(d, apiKey, 'us')));
+    for (const r of results) collect(r, allResults);
+    completed += batch.length;
+    if (onProgress) onProgress({ phase: 'searching', completed, total: totalAll, found: allResults.size });
+    if (i + batchSize < dorks.length) await sleep(100);
+  }
+
+  // Run multi-region
+  for (let i = 0; i < regionQueries.length; i += batchSize) {
+    const batch = regionQueries.slice(i, i + batchSize);
+    const results = await Promise.all(batch.map(rq => searchSerper(rq.q, apiKey, rq.gl)));
+    for (const r of results) collect(r, allResults);
+    completed += batch.length;
+    if (onProgress) onProgress({ phase: 'searching', completed, total: totalAll, found: allResults.size });
+    if (i + batchSize < regionQueries.length) await sleep(100);
+  }
+
+  console.log(`Total unique candidates: ${allResults.size}`);
+  return Array.from(allResults.values());
+}
+
 function collect(results, map) {
-  let added = 0;
   for (const r of results) {
     try {
       const host = new URL(r.url).hostname.replace(/^www\./, '');
       if (BLACKLIST.has(host)) continue;
       if (host.includes('shopify.com') && !host.includes('myshopify.com')) continue;
-      if (!map.has(host)) { map.set(host, r); added++; }
+      if (!map.has(host)) map.set(host, r);
     } catch {}
   }
-  return added;
 }
 
-/**
- * Main search — runs dorks SEQUENTIALLY to avoid rate limits
- * Each query = 1 API call = up to 10 results
- * Strategy: lots of diverse dorks to maximize unique domains
- */
-async function searchAllDorks(keyword, apiKey, onProgress) {
-  const kw = keyword.trim();
-  const kwl = kw.toLowerCase();
-  const allResults = new Map();
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
 
-  // Generate ALL dorks upfront — variety is key since we only get 10 per query
-  const allDorks = [];
-
-  // ---- TIER 1: High-value dorks (US) ----
-  const tier1 = [
-    `${kw} "powered by shopify"`,
-    `${kw} site:myshopify.com`,
-    `buy ${kw} "powered by shopify"`,
-    `best ${kw} "powered by shopify"`,
-    `${kw} shop "powered by shopify"`,
-    `${kw} store "powered by shopify"`,
-    `shop ${kw} "powered by shopify"`,
-    `${kw} "add to cart" "powered by shopify"`,
-    `${kw} "free shipping" "powered by shopify"`,
-    `cheap ${kw} "powered by shopify"`,
-    `${kw} online "powered by shopify"`,
-    `premium ${kw} "powered by shopify"`,
-    `${kw} "sale" "powered by shopify"`,
-    `${kw} collection "powered by shopify"`,
-    `${kw} "reviews" "powered by shopify"`,
-    `${kw} "worldwide shipping" "powered by shopify"`,
-    `${kw} wholesale "powered by shopify"`,
-    `${kw} bundle "powered by shopify"`,
-    `${kw} subscription "powered by shopify"`,
-    `${kw} discount "powered by shopify"`,
-    `${kw} "cart" "powered by shopify"`,
-    `${kw} official "powered by shopify"`,
-    `${kw} custom "powered by shopify"`,
-    `${kw} "new arrivals" "powered by shopify"`,
-    `${kw} "best seller" "powered by shopify"`,
-    `${kw} "track order" "powered by shopify"`,
-    `${kw} kit "powered by shopify"`,
-    `${kw} accessories "powered by shopify"`,
-    `${kw} supplies "powered by shopify"`,
-    `${kw} products "powered by shopify"`,
-  ];
-  tier1.forEach(d => allDorks.push({ q: d, gl: 'us' }));
-
-  // ---- TIER 2: URL pattern dorks ----
-  const tier2 = [
-    `${kw} "cdn.shopify.com"`,
-    `${kw} ".myshopify.com"`,
-    `${kw} "checkout.shopify.com"`,
-    `${kw} inurl:/products/ shopify`,
-    `${kw} inurl:/collections/ shopify`,
-    `${kw} shopify store online`,
-    `${kw} "shopify" "add to cart"`,
-    `${kw} "Refund policy" "powered by shopify"`,
-    `${kw} "Privacy policy" "powered by shopify"`,
-    `${kw} "Terms of service" "powered by shopify"`,
-    `${kw} "About us" "powered by shopify"`,
-    `${kw} "Contact us" "powered by shopify"`,
-  ];
-  tier2.forEach(d => allDorks.push({ q: d, gl: 'us' }));
-
-  // ---- TIER 3: Multi-region (same top queries, different countries) ----
-  const countries = ['gb', 'de', 'fr', 'tr', 'au', 'ca', 'nl', 'in', 'jp', 'br'];
-  const topQueries = [
-    `${kw} "powered by shopify"`,
-    `${kw} site:myshopify.com`,
-    `buy ${kw} shopify`,
-  ];
-  for (const gl of countries) {
-    for (const q of topQueries) {
-      allDorks.push({ q, gl });
-    }
-  }
-
-  // ---- TIER 4: Variants ----
-  if (!kwl.endsWith('s')) {
-    allDorks.push({ q: `${kw}s "powered by shopify"`, gl: 'us' });
-    allDorks.push({ q: `${kw}s site:myshopify.com`, gl: 'us' });
-  } else {
-    allDorks.push({ q: `${kwl.slice(0,-1)} "powered by shopify"`, gl: 'us' });
-  }
-  if (!kwl.startsWith('e-') && !kwl.startsWith('e ')) {
-    allDorks.push({ q: `e-${kw} "powered by shopify"`, gl: 'us' });
-    allDorks.push({ q: `e-${kw} site:myshopify.com`, gl: 'us' });
-    allDorks.push({ q: `e${kw} shopify`, gl: 'us' });
-  }
-
-  // ---- TIER 5: Year-based, desperation ----
-  const tier5 = [
-    `${kw} "© 2025" "powered by shopify"`,
-    `${kw} "© 2024" "powered by shopify"`,
-    `${kw} "© 2026" "powered by shopify"`,
-    `${kw} "fast shipping" "powered by shopify"`,
-    `${kw} "limited edition" "powered by shopify"`,
-    `${kw} organic "powered by shopify"`,
-    `${kw} eco "powered by shopify"`,
-    `${kw} luxury "powered by shopify"`,
-    `${kw} handmade "powered by shopify"`,
-    `${kw} natural "powered by shopify"`,
-    `${kw} "powered by shopify" USA`,
-    `${kw} "powered by shopify" UK`,
-    `${kw} "powered by shopify" Europe`,
-    `${kw} "powered by shopify" global`,
-    `${kw} "powered by shopify" international`,
-  ];
-  tier5.forEach(d => allDorks.push({ q: d, gl: 'us' }));
-
-  // Deduplicate dorks
-  const seen = new Set();
-  const uniqueDorks = allDorks.filter(d => {
-    const key = `${d.q}|${d.gl}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-
-  const total = uniqueDorks.length;
-  console.log(`🔍 Total dorks to run: ${total}`);
-
-  // Run SEQUENTIALLY with small delay to avoid rate limits
-  for (let i = 0; i < uniqueDorks.length; i++) {
-    const { q, gl } = uniqueDorks[i];
-    const results = await searchSerper(q, apiKey, gl);
-    collect(results, allResults);
-
-    if (onProgress) {
-      onProgress({ phase: 'searching', completed: i + 1, total, found: allResults.size });
-    }
-
-    // 250ms delay between requests — safe for rate limits
-    await sleep(250);
-
-    // Early exit if we have plenty of candidates
-    if (allResults.size >= 60 && i > total * 0.5) {
-      console.log(`✅ Early exit: ${allResults.size} candidates found at dork ${i+1}/${total}`);
-      break;
-    }
-  }
-
-  console.log(`📋 Final: ${allResults.size} unique candidates from ${total} dorks`);
-  return Array.from(allResults.values());
-}
-
-module.exports = { searchAllDorks };
+module.exports = { generateDorks, searchAllDorks, discoverRelatedTerms };
