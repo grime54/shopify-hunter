@@ -1,0 +1,23 @@
+{
+  "name": "shopify-hunter-x3000",
+  "version": "1.0.0",
+  "description": "AI-Powered Shopify Store Discovery Engine",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": ["shopify", "store-finder", "ecommerce"],
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "compression": "^1.7.4",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.0",
+    "express": "^4.21.0",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^8.0.0",
+    "p-limit": "^6.1.0"
+  }
+}

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shopify Hunter X-3000</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔍</text></svg>">
+</head>
+<body>
+  <!-- Animated background -->
+  <div class="bg-grid"></div>
+  <div class="bg-glow glow-1"></div>
+  <div class="bg-glow glow-2"></div>
+  <div class="bg-glow glow-3"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">
+          <span class="logo-emoji">🎯</span>
+          <div class="logo-ring"></div>
+        </div>
+        <div class="logo-text">
+          <h1>Shopify Hunter <span class="accent">X-3000</span></h1>
+          <p class="tagline">AI-Powered Store Discovery Engine</p>
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+        <span class="theme-icon">🌙</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main">
+    <!-- Search Section -->
+    <section class="search-section" id="searchSection">
+      <div class="search-card glass">
+        <h2 class="search-title">Hangi ürünü arıyorsun?</h2>
+        <p class="search-subtitle">Bir kelime yaz, gerçek Shopify mağazalarını bulalım</p>
+        
+        <form class="search-form" id="searchForm">
+          <div class="input-wrapper">
+            <div class="input-glow"></div>
+            <input 
+              type="text" 
+              id="searchInput" 
+              placeholder="örn: esim, coffee, sneakers, candle..." 
+              autocomplete="off"
+              maxlength="100"
+              required
+            >
+            <button type="submit" class="search-btn" id="searchBtn">
+              <span class="btn-text">Avla</span>
+              <span class="btn-icon">🔍</span>
+              <div class="btn-loader" id="btnLoader"></div>
+            </button>
+          </div>
+        </form>
+
+        <div class="search-tags">
+          <span class="tag-label">Popüler:</span>
+          <button class="tag" data-keyword="esim">eSIM</button>
+          <button class="tag" data-keyword="coffee">Coffee</button>
+          <button class="tag" data-keyword="sneakers">Sneakers</button>
+          <button class="tag" data-keyword="candle">Candle</button>
+          <button class="tag" data-keyword="jewelry">Jewelry</button>
+          <button class="tag" data-keyword="pet supplies">Pet Supplies</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Progress Section -->
+    <section class="progress-section hidden" id="progressSection">
+      <div class="progress-card glass">
+        <div class="progress-header">
+          <div class="progress-animation">
+            <div class="radar">
+              <div class="radar-sweep"></div>
+              <div class="radar-dot dot-1"></div>
+              <div class="radar-dot dot-2"></div>
+              <div class="radar-dot dot-3"></div>
+            </div>
+          </div>
+          <div class="progress-info">
+            <h3 id="progressTitle">Aranıyor...</h3>
+            <p id="progressMessage">Dorklar oluşturuluyor...</p>
+          </div>
+        </div>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-stats">
+          <div class="stat">
+            <span class="stat-value" id="statSearched">0</span>
+            <span class="stat-label">Dork Çalıştırıldı</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="statFound">0</span>
+            <span class="stat-label">Aday Bulundu</span>
+          </div>
+          <div class="stat">
+            <span class="stat-value" id="statVerified">0</span>
+            <span class="stat-label">Doğrulandı</span>
+          </div>
+        </div>
+        <div class="progress-log" id="progressLog"></div>
+      </div>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results-section hidden" id="resultsSection">
+      <div class="results-header">
+        <div class="results-summary glass">
+          <div class="summary-icon">🏆</div>
+          <div class="summary-info">
+            <h2>Sonuçlar</h2>
+            <p id="resultsSummary">0 doğrulanmış Shopify mağazası bulundu</p>
+          </div>
+          <div class="summary-actions">
+            <button class="action-btn" id="exportCsvBtn" title="CSV İndir">
+              📊 CSV
+            </button>
+            <button class="action-btn" id="exportJsonBtn" title="JSON İndir">
+              📋 JSON
+            </button>
+            <button class="action-btn" id="newSearchBtn" title="Yeni Arama">
+              🔄 Yeni Arama
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="results-grid" id="resultsGrid"></div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>Shopify Hunter X-3000 — Premium Store Discovery Engine</p>
+  </footer>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
